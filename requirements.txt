@@ -8,3 +8,4 @@ joblib
 mlflow
 xgboost
 pytest
+prometheus-client
