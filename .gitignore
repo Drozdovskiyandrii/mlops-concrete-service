@@ -5,3 +5,4 @@ venv/
 artifacts/
 mlruns/
 .DS_Store
+training/data/*.csv
