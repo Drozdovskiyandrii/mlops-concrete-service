@@ -7,15 +7,19 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# copy requirements
+# deps
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
-# copy app
+# copy code
 COPY app ./app
 COPY training ./training
 
-EXPOSE 8000
+# create artifacts dir
+RUN mkdir -p /app/artifacts
 
+# ✅ train model during build so the image contains artifacts/model.joblib
+RUN python -m training.train
+
+EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
