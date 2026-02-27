@@ -6,3 +6,7 @@ artifacts/
 mlruns/
 .DS_Store
 training/data/*.csv
+mlflow/
+mlruns/
+mlflow.db
+mlruns/

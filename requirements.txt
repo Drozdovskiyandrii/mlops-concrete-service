@@ -9,3 +9,4 @@ mlflow
 xgboost
 pytest
 prometheus-client
+prometheus-fastapi-instrumentator
