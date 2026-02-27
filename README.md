@@ -1,10 +1,21 @@
-# MLOps Concrete Service
+# MLOps Concrete Service (FastAPI + MLflow + Prometheus + Grafana)
 
-Production-style MLOps project: train + track (MLflow) + serve (FastAPI) + containerize + deploy.
+Production-style MLOps demo project: a containerized ML inference API for concrete compressive strength prediction, with monitoring and experiment tracking.
 
-## MLflow Registry (Serving)
-- Train + register model: `python -m training.train`
-- Set Production alias in MLflow UI: `concrete_strength_model` -> alias `Production`
-- Run API with registry:
-  - `mlflow ui --host 127.0.0.1 --port 5000`
-  - `MLFLOW_TRACKING_URI=http://127.0.0.1:5000 uvicorn app.main:app --reload`
+## Tech Stack
+- **FastAPI** inference service (`/predict`, `/health`, `/metrics`)
+- **MLflow** tracking UI (local)
+- **Prometheus** metrics scraping
+- **Grafana** dashboards (auto-provisioned)
+
+## Architecture
+Client → FastAPI (Prometheus metrics)  
+Prometheus → Grafana  
+FastAPI → MLflow (tracking UI)
+
+## Quickstart (30 seconds)
+Requirements: Docker + Docker Compose
+
+```bash
+make up
+make load   # optional: generate traffic
