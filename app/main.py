@@ -18,9 +18,16 @@ def health() -> str:
 @app.post("/predict")
 def predict_strength(input_data: ConcreteInput) -> dict:
     try:
-        result = predict(input_data.model_dump())
-        # result expected to be {"predicted_strength_mpa": float}
-        return result
+        out = predict(input_data.model_dump())
+
+        # ✅ normalize output (some versions may return float)
+        if isinstance(out, (int, float)):
+            return {"predicted_strength_mpa": float(out)}
+        if isinstance(out, dict):
+            return out
+
+        raise HTTPException(status_code=500, detail=f"Unexpected predict() return type: {type(out)}")
+
     except FileNotFoundError as e:
         raise HTTPException(status_code=500, detail=f"Model artifact not found: {e}") from e
     except Exception as e:

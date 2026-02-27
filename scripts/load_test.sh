@@ -2,6 +2,8 @@
 set -euo pipefail
 
 URL="${URL:-http://localhost:8000/predict}"
+HEALTH_URL="${HEALTH_URL:-http://localhost:8000/health}"
+
 DURATION="${DURATION:-30}"        # seconds
 CONCURRENCY="${CONCURRENCY:-10}"  # workers
 SLEEP="${SLEEP:-0.1}"             # delay between requests per worker
@@ -17,6 +19,23 @@ payload='{
   "age": 28.0
 }'
 
+echo "Waiting for service to be ready..."
+
+for i in $(seq 1 60); do
+  if curl -sS --max-time 1 "$HEALTH_URL" | grep -q "OK"; then
+    echo "Service is ready."
+    break
+  fi
+  sleep 0.5
+done
+
+echo "Warmup..."
+for i in $(seq 1 20); do
+  curl -sS --max-time 2 -X POST "$URL" \
+    -H "Content-Type: application/json" \
+    -d "$payload" > /dev/null || true
+done
+
 echo "Generating traffic: duration=${DURATION}s concurrency=${CONCURRENCY} sleep=${SLEEP}s"
 
 end_time=$((SECONDS + DURATION))
@@ -24,20 +43,29 @@ end_time=$((SECONDS + DURATION))
 worker () {
   local ok=0
   local fail=0
+
   while [ $SECONDS -lt $end_time ]; do
-    if curl -sS -o /dev/null -w "%{http_code}" -X POST "$URL" \
+    code=$(curl -sS -o /dev/null -w "%{http_code}" \
+      --connect-timeout 1 --max-time 3 \
+      --retry 2 --retry-connrefused --retry-all-errors --retry-delay 0 \
+      -X POST "$URL" \
       -H "Content-Type: application/json" \
-      -d "$payload" | grep -q "^200$"; then
+      -d "$payload" || true)
+
+    if [[ "$code" == "200" ]]; then
       ok=$((ok+1))
     else
       fail=$((fail+1))
     fi
+
     sleep "$SLEEP"
   done
+
   echo "worker ok=${ok} fail=${fail}"
 }
 
 pids=()
+
 for i in $(seq 1 "$CONCURRENCY"); do
   worker &
   pids+=($!)
@@ -47,4 +75,5 @@ for pid in "${pids[@]}"; do
   wait "$pid"
 done
 
-echo "Done. Grafana: http://localhost:3000 (admin/admin)"
+echo "Done."
+echo "Grafana: http://localhost:3000 (admin/admin)"
