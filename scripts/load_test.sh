@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-URL="http://localhost:8000/predict"
+URL="${URL:-http://localhost:8000/predict}"
+DURATION="${DURATION:-30}"        # seconds
+CONCURRENCY="${CONCURRENCY:-10}"  # workers
+SLEEP="${SLEEP:-0.1}"             # delay between requests per worker
 
 payload='{
   "cement": 540.0,
@@ -14,13 +17,34 @@ payload='{
   "age": 28.0
 }'
 
-echo "Generating traffic..."
+echo "Generating traffic: duration=${DURATION}s concurrency=${CONCURRENCY} sleep=${SLEEP}s"
 
-for i in $(seq 1 200); do
-  curl -s -X POST "$URL" \
-    -H "Content-Type: application/json" \
-    -d "$payload" > /dev/null
-  sleep 0.2
+end_time=$((SECONDS + DURATION))
+
+worker () {
+  local ok=0
+  local fail=0
+  while [ $SECONDS -lt $end_time ]; do
+    if curl -sS -o /dev/null -w "%{http_code}" -X POST "$URL" \
+      -H "Content-Type: application/json" \
+      -d "$payload" | grep -q "^200$"; then
+      ok=$((ok+1))
+    else
+      fail=$((fail+1))
+    fi
+    sleep "$SLEEP"
+  done
+  echo "worker ok=${ok} fail=${fail}"
+}
+
+pids=()
+for i in $(seq 1 "$CONCURRENCY"); do
+  worker &
+  pids+=($!)
 done
 
-echo "Done. Open Grafana at http://localhost:3000 (admin/admin)"
+for pid in "${pids[@]}"; do
+  wait "$pid"
+done
+
+echo "Done. Grafana: http://localhost:3000 (admin/admin)"

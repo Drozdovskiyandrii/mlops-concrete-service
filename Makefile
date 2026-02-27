@@ -1,27 +1,17 @@
-.PHONY: help up down logs ps test load
+SHELL := /bin/bash
 
-help:
-	@echo "make up      - start full stack (app + mlflow + prometheus + grafana)"
-	@echo "make down    - stop all services"
-	@echo "make logs    - tail logs"
-	@echo "make ps      - show running containers"
-	@echo "make test    - run tests"
-	@echo "make load    - generate traffic for monitoring"
+DURATION ?= 60
+CONCURRENCY ?= 10
+SLEEP ?= 0.2
 
 up:
-	docker compose up --build -d
+	docker compose up -d --build
 
 down:
 	docker compose down
 
 logs:
-	docker compose logs -f --tail=200
-
-ps:
-	docker compose ps
-
-test:
-	pytest -q
+	docker compose logs -f --tail=200 app
 
 load:
-	bash scripts/load_test.sh
+	DURATION=$(DURATION) CONCURRENCY=$(CONCURRENCY) SLEEP=$(SLEEP) bash scripts/load_test.sh
